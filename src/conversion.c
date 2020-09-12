@@ -18,21 +18,22 @@ extern JpegData jpegDataBN;
 void convertirAEscalaGrises(int *filasACambiar, int largoArreglo){
     int ancho = jpegData.width;
     int ch = jpegData.ch;
-    int posicion, fila, R, G, B;
+    int posicion, fila, R, G, B, p;
     uint8_t Y;
 
     for (int i = 0; i < largoArreglo; i++)
     {
         fila = filasACambiar[i];
         posicion = fila*ancho*ch;
+        p = posicion;
         for (int j = posicion; j < posicion+ancho; j+=3)
         {
             R = jpegData.data[j]; 
             G = jpegData.data[j+1];
             B = jpegData.data[j+2];
             Y = R*0.3 + G*0.59 + B*0.11;
-            jpegDataBN.data[posicion] = Y;
-            posicion++;
+            jpegDataBN.data[p] = Y;
+            p++;
         }
         
     }

@@ -5,12 +5,16 @@
 #include <jpeglib.h>
 #include <inttypes.h>
 #include "../incl/lecturaImagenes.h"
+#include <semaphore.h>
 
 extern JpegData jpegData;
+extern JpegData jpegDataBN;
+extern JpegData jpegDataFiltrada;
 extern int numImagen;
 extern int cantHebrasConsumidoras;
 extern int ordenHebras;
-
+extern sem_t semaforo1;
+extern sem_t semaforo2;
 
 
 //Entradas:     - Una imagen del tipo JpegData.
@@ -81,11 +85,14 @@ int leerJpeg(JpegData *jpegData,
     alloc_jpeg(jpegData);
 
     // 5. Lectura linea a linea.
-    uint8_t *row = jpegData->data;
-    const uint32_t stride = jpegData->width * jpegData->ch;
-    buffer_t *buffer;
-    buffer = (buffer_t *) arg;
-    buffer->empty = 0;
+    //*****************************************************************************************************
+    //Algoritmo del Productor
+    //*****************************************************************************************************
+    uint8_t *row = jpegData->data;   //Representa una fila de la imagen
+    const uint32_t stride = jpegData->width * jpegData->ch;    //el ancho de la imagen
+    buffer_t *buffer;                        
+    buffer = (buffer_t *) arg;      //Se castea el buffer a buffer_t
+    buffer->empty = 0;              //El buffer esta vacio
     int numFila = 0;
     printf("PRODUCTORA: va a comenzar la produccion\n");
     for (int y = 0; y < jpegData->height; y++) {
@@ -94,6 +101,10 @@ int leerJpeg(JpegData *jpegData,
         numFila = y;
         row += stride;
         pthread_mutex_lock (&buffer->mutex);
+        if(buffer->full){
+            sem_post(&semaforo1);
+            sem_wait(&semaforo2);
+        }
         while (buffer->full) {
             pthread_cond_wait (&buffer->notFull, &buffer->mutex);
         }
@@ -102,6 +113,9 @@ int leerJpeg(JpegData *jpegData,
         pthread_mutex_unlock(&buffer->mutex);
         printf("PRODUCTORA: estamos en el for de leer la imagen en el ciclo: %d\n", y);
     }
+    //*****************************************************************************************************
+    //*****************************************************************************************************
+
 
     // 6. Finalización de la descompresión.
     jpeg_finish_decompress(&cinfo);
@@ -125,6 +139,17 @@ void *leerImagenes(void *buffer){
         liberarJpeg(&jpegData);
         exit(-1);
     }
+    //Reservar memoria para la imagen en blanco y negro que se utilizara mas adelante
+    jpegDataBN.width = jpegData.width;
+	jpegDataBN.height = jpegData.height;
+	jpegDataBN.ch = 1;            //canal = 1. Representa una imagen en escala de grises.
+	alloc_jpeg(&jpegDataBN);
+
+    //Reservar memoria para la imagen filtrada que se utilizara mas adelante
+    jpegDataFiltrada.width = jpegData.width;
+	jpegDataFiltrada.height = jpegData.height;
+	jpegDataFiltrada.ch = 1;            //canal = 1. Representa una imagen en escala de grises.
+	alloc_jpeg(&jpegDataFiltrada);
 }
 
 

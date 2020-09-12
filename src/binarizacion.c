@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
-extern JpegData jpegDataBN;
+extern JpegData jpegDataFiltrada;
 extern int umbralBin;
 
 //Entradas:     - JpegData que representa la imagen filtrada (Filtro de realce).
@@ -16,20 +16,20 @@ extern int umbralBin;
 
 void binarizarImagen(int *filasACambiar, int largoArreglo){
 
-    int ancho = jpegDataBN.width;
+    int ancho = jpegDataFiltrada.width;
     int posicion, fila;
 
-    for (int i = 0; i < largoArreglo; i++)
+    for (int i = 0; i < largoArreglo; i++)  //Para cada fila que tenga que modificar la hebra
     {
         fila = filasACambiar[i];
         posicion = fila*ancho;
         for (int j = posicion; j < posicion+ancho; j++)
         {
-            if(jpegDataBN.data[j] > umbralBin){
-                jpegDataBN.data[j] = 255;
+            if(jpegDataFiltrada.data[j] > umbralBin){
+                jpegDataFiltrada.data[j] = 255;
             }
             else{
-                jpegDataBN.data[j] = 0;
+                jpegDataFiltrada.data[j] = 0;
             }
         }
     }

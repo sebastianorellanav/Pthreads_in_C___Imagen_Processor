@@ -4,8 +4,7 @@
 #define FILTRO_H
 
 //Cabeceras de funciones
-JpegData aplicarFiltroLaplaciano(JpegData img,int **mascara);
 int **leerMascara(char *nombreMascara);
 int **crearPunteroMascara();
-void calcularFiltro(JpegData *img,JpegData *nuevo,int **mascara,int loc,int w, int h);
+void AplicarFiltro(int *filasHebra, int largoFilasHebras);
 #endif

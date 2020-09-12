@@ -15,29 +15,35 @@
 #include "../incl/conversion.h"
 #include "../incl/filtro.h"
 #include "../incl/hebras.h"
+#include <semaphore.h>
 
-
-JpegData jpegData;
-JpegData jpegDataBN;
-int numImagen;
-int cantHebrasConsumidoras;
-int ordenHebras;
-int umbralBin;
+//Variables Globales
+JpegData jpegData;          //Imagen Original
+JpegData jpegDataBN;        //Imagen en Blanco y Negro
+JpegData jpegDataFiltrada;  //Imagen Filtrada
+int numImagen;              //numero de Imagen
+int cantHebrasConsumidoras; //cantidad de Hebras Consumidoras
+int ordenHebras;            //para saber cual es la ultima hebra que ejecuta ciertas funciones
+int umbralBin;              //Umbral de binarizacion
+int umbralNeg;              //Umbral de negrura
+int **mascara;              //Mascara para filtro laplaciano
+int cantidadCeros;          //VARIABLE GLOBAL PARA LA CLASIFICACION
+char *nearlyBlack;          //variable que almacena el resultado de la clasificacion
+pthread_barrier_t rendezvous;
+sem_t semaforo1;
+sem_t semaforo2;
 
 //Funcion Main
 int main (int argc, char **argv)
 {
 	//Inicialización de Variables
 	int cantImagenes = 0;
-	//int umbralBin = 0;
-	int umbralNeg = 0;
 	int flagResultados = 0;
 	char *nombreArchivoMasc = NULL;
 	int tamanoBuffer;
-	int cantidadHebras;
-	int index;
 	int c;
 
+	//Variables getopt
 	opterr = 0;
 
 	//el siguiente ciclo se utiliza para recibir los parametros de entrada usando getopt
@@ -60,7 +66,7 @@ int main (int argc, char **argv)
 				sscanf(optarg, "%d", &tamanoBuffer);
 				break;
 			case 'h':
-				sscanf(optarg, "%d", &cantidadHebras);
+				sscanf(optarg, "%d", &cantHebrasConsumidoras);
 				break;
 			case 'f':
 				flagResultados = 1;
@@ -84,70 +90,65 @@ int main (int argc, char **argv)
 		printf("|-------------------------|--------------------------|\n");
 	}
 
+	//Obtener mascara para hacer el filtrado
+	mascara = leerMascara(nombreArchivoMasc);
+	sem_init(&semaforo1, 0, 0);
+	sem_init(&semaforo2, 0, 0);
 	
-
-	int **mascara = leerMascara(nombreArchivoMasc);
-
-	uint8_t num = 10;
-	num = num*(-1);
-	int entero = (int)num;
-
-
-    // Para cada imagen
+    // Para cada imagen:
 	for (int i = 1; i <= cantImagenes; i++)
 	{
-		//se crean los id de las hebras
-		pthread_t productora;
-    	pthread_t consumidoras[cantidadHebras];
-		buffer_t *buffer;
-		buffer_init(&buffer, tamanoBuffer);
-		pthread_mutex_init(&buffer->mutex, NULL);
-		pthread_cond_init(&buffer->notFull, NULL);
+		pthread_t productora;                             //se crean los id de las hebras
+    	pthread_t consumidoras[cantHebrasConsumidoras];
+		buffer_t *buffer;                                 //Se crea el buffer
+		buffer_init(&buffer, tamanoBuffer);               //Se inicializa el buffer
+		pthread_mutex_init(&buffer->mutex, NULL);         //Se inicializa el mutex
+		pthread_cond_init(&buffer->notFull, NULL);    
 		pthread_cond_init(&buffer->notEmpty, NULL);
+    	pthread_barrier_init(&rendezvous, NULL,cantHebrasConsumidoras);  //Se inicializa la barrera
 		printf("Se creo el id de las hebras y se inicializo el buffer\n");
-		//Obtener el nombre de archivo y nombre de imagen
-		
-		char imagename[30];
-		sprintf(imagename, "imagen_%i",i);
 
-		//1. Leer la imagen
-		//comienza la ejecucion de la hebra productora
-		numImagen = i; //variable global
-		cantHebrasConsumidoras = cantidadHebras;  //variable global
-		ordenHebras = 0;
+		numImagen = i;   //se setea el numero de la imagen actual a procesar (Variable Global)
+		ordenHebras = 0; //variable utilizada para saber cual es la ultima hebra que ejecuta ciertas funciones
+		cantidadCeros = 0; //Setear variable en 0
+		//Comienza la ejecucion de la hebra productora
 		pthread_create(&productora, NULL, leerImagenes, (void *)buffer);
 		printf("se comenzo a ejecutar la productora\n");
-		
+		//Semaforo que bloquea el main
+		sem_wait(&semaforo1);
 		//Consumir Imagen
-		for(int i = 0 ; i<cantidadHebras; i++)
+		for(int i = 0 ; i<cantHebrasConsumidoras; i++)
 		{
+			//Comienza la ejecucion de las hebras productoras
 			pthread_create(&consumidoras[i], NULL, pipeline, (void *)buffer);
 			printf("se comienza a ejecutar la consumidora nro: %d\n",i+1);
 		}
 		pthread_join(productora, NULL);
+		for (int i = 0; i < cantHebrasConsumidoras; i++)
+		{
+			pthread_join(consumidoras[i], NULL);
+		}
+		
+		pthread_barrier_destroy(&rendezvous);
+    	printf("se destruye la barrera\n");
+		
 		printf("Si logra llegar hasta aqui estamos salvados\n");
-
-		//2. Convertir a escala de grises
-		jpegData = convertirAEscalaGrises(jpegData); 
-		
-		//3. aplicar filtro laplaciano
-		jpegData = aplicarFiltroLaplaciano(jpegData,mascara); 
-		
-		//4. binarizar imagen
-		jpegData = binarizarImagen(jpegData, umbralBin);
-		
-		//5. Clasificar imagen
-		char *nearlyBlack = analisisDePropiedad(jpegData, umbralNeg);
 
 		//6. Escribir imagen
 		char fileout[30];
 		sprintf(fileout,"./out_%i.jpg",i);
-		escribirImagenes(jpegData, "escalagrises",fileout);
+		escribirImagenes(jpegDataFiltrada, "escalagrises",fileout);
 
 		//7. liberar memoria
 		liberarJpeg(&jpegData);
+		liberarJpeg(&jpegDataBN);
+		liberarJpeg(&jpegDataFiltrada);
+		free(buffer);
 
 		if(flagResultados){
+			//Obtener el nombre de imagen
+			char imagename[30];
+			sprintf(imagename, "imagen_%i",i);
 			if(nearlyBlack[0] == 'n'){
 				printf("|          %s       |             %s           |\n", imagename, nearlyBlack);
 			}
@@ -155,9 +156,6 @@ int main (int argc, char **argv)
 				printf("|          %s       |             %s          |\n", imagename, nearlyBlack);
 			}
 		}
-	}
-
-   
-    
+	} 
 	return 0;
 }

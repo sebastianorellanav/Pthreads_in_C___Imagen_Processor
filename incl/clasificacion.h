@@ -4,6 +4,6 @@
 #define CLASIFICACION_H
 
 //Cabeceras de Funciones
-char *analisisDePropiedad(JpegData img, int umbral);
+void analisisDePropiedad(int *filasACambiar, int largoArreglo);
 
 #endif
