@@ -29,6 +29,8 @@ void buffer_init(buffer_t **buffer, int tamano)
 	}
 	(*buffer)->empty = 1;
     (*buffer)->full = 0;
+    (*buffer)->produciendo = 1;
+    (*buffer)->consumiendo = 0;
 	
 	//aqui van las otras cosas que no sabemos como inicializarlas
 	//...
@@ -117,9 +119,10 @@ void *pipeline(void *arg)
         printf("CONSUMIDORA X: entra al while de filasARecoger\n");
         pthread_mutex_lock (&buffer->mutex);
         if(buffer->empty){
-            sem_post(&semaforo2);
+            buffer->consumiendo = 0;
+            buffer->produciendo = 1;
         }
-        while (buffer->empty) {
+        while (buffer->empty || buffer->produciendo) {
             printf("CONSUMIDORA X: deberia entrar al buffer->empty\n");
             pthread_cond_wait (&buffer->notEmpty, &buffer->mutex);
         }

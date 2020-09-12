@@ -20,6 +20,7 @@ int tamano;
 int cantHebrasConsumidoras;
 int head, tail;
 int full, empty;
+int produciendo, consumiendo;
 pthread_mutex_t mutex;
 pthread_cond_t notFull, notEmpty;
 } buffer_t;

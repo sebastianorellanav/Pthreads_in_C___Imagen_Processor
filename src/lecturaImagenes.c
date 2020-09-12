@@ -84,6 +84,8 @@ int leerJpeg(JpegData *jpegData,
 
     alloc_jpeg(jpegData);
 
+    //Se desbloquea la hebra main
+    sem_post(&semaforo1);
     // 5. Lectura linea a linea.
     //*****************************************************************************************************
     //Algoritmo del Productor
@@ -102,10 +104,10 @@ int leerJpeg(JpegData *jpegData,
         row += stride;
         pthread_mutex_lock (&buffer->mutex);
         if(buffer->full){
-            sem_post(&semaforo1);
-            sem_wait(&semaforo2);
+            buffer->produciendo = 0;
+            buffer->consumiendo = 1;
         }
-        while (buffer->full) {
+        while (buffer->full || buffer->consumiendo) {
             pthread_cond_wait (&buffer->notFull, &buffer->mutex);
         }
         put_in_buffer(&buffer, numFila);
