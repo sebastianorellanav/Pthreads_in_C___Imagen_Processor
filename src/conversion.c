@@ -21,13 +21,21 @@ void convertirAEscalaGrises(int *filasACambiar, int largoArreglo){
     int posicion, fila, R, G, B, p;
     uint8_t Y;
 
+    printf("Tengo las filas:\n");
+    for (int i = 0; i < largoArreglo; i++)
+    {
+        printf("%d  ",filasACambiar[i]);
+    }
+    
+
     for (int i = 0; i < largoArreglo; i++)
     {
         fila = filasACambiar[i];
         posicion = fila*ancho*ch;
-        p = posicion;
-        for (int j = posicion; j < posicion+ancho; j+=3)
+        p = fila*ancho;
+        for (int j = posicion; j < posicion+(ancho*ch); j+=3)
         {
+            
             R = jpegData.data[j]; 
             G = jpegData.data[j+1];
             B = jpegData.data[j+2];

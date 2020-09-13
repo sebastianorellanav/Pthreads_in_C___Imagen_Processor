@@ -108,13 +108,17 @@ int leerJpeg(JpegData *jpegData,
             buffer->consumiendo = 1;
         }
         while (buffer->full || buffer->consumiendo) {
+            pthread_cond_broadcast(&buffer->notEmpty);
             pthread_cond_wait (&buffer->notFull, &buffer->mutex);
         }
         put_in_buffer(&buffer, numFila);
-        pthread_cond_signal(&buffer->notEmpty);
         pthread_mutex_unlock(&buffer->mutex);
         printf("PRODUCTORA: estamos en el for de leer la imagen en el ciclo: %d\n", y);
     }
+    buffer->produciendo = 0;
+    buffer->consumiendo = 1;
+    pthread_cond_broadcast(&buffer->notEmpty);
+    
     //*****************************************************************************************************
     //*****************************************************************************************************
 

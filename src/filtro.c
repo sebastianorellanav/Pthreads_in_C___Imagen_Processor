@@ -58,37 +58,65 @@ void AplicarFiltro(int *filasHebra, int largoFilasHebras)
     {
         numFila = filasHebra[j];
         posicion = numFila * ancho;
-        for (int i = posicion; i < posicion+ancho; i++)  //Calcula la convolucion
+        p=0;
+        for (int i = posicion+1; i < (posicion+ancho-1); i++)  //Calcula la convolucion
         {
+            calcularFiltro(i, ancho);   
+            /*
+            nuevoPixel = 0;
             if(p=posicion-ancho-1 >= 0 && i-1 >= 0 && numFila-1 >= 0) //posicion superior izquierda
-                nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[0][0]);
+                nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][0]));
             
             if(p=posicion-ancho >= 0 && numFila-1 >= 0)  //posicion superior central
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[0][1]); 
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][1])); 
             
             if(p=posicion-ancho+1 >= 0 && i+1 < ancho && numFila-1 >= 0)  //posicion superior derecha
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[0][2]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][2]));
 
             if(p=posicion-1 >= 0 && i-1 >= 0)  //posicion izquierda
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[1][0]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[1][0]));
             
             if(p=posicion+1 < largoImagen && i+1 < ancho)  //posicion derecha
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[1][2]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[1][2]));
             
             if(p=posicion+ancho-1 < largoImagen && i-1 >= 0 && numFila+1 < alto)  //posicion inferior izquierda
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[2][0]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][0]));
 
             if(p=posicion+ancho < largoImagen && numFila+1 < alto)  //posicion inferior central
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[2][1]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][1]));
 
             if(p=posicion+ancho+1 < largoImagen && i+1 < ancho && numFila+1 < alto)  //posicion inferior derecha
-               nuevoPixel = nuevoPixel + (jpegDataBN.data[p]*mascara[2][2]);
+               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][2]));
             
-            nuevoPixel = nuevoPixel + (jpegDataBN.data[posicion]*mascara[1][1]); //posicion central
-
-            jpegDataFiltrada.data[posicion] = nuevoPixel;
+            nuevoPixel = nuevoPixel + ((jpegDataBN.data[posicion]*mascara[1][1])); //posicion central
+            */
+            //jpegDataFiltrada.data[posicion] = nuevoPixel;
         }
         
     }
     
+}
+
+void  calcularFiltro(int loc, int w){
+    int n1 = jpegDataBN.data[loc - w -1];
+    n1 = n1* mascara[0][0];
+    int n2 = jpegDataBN.data[loc - w] ; 
+    n2= n2 * mascara[0][1];
+    int n3 = jpegDataBN.data[loc - w + 1] ; 
+    n3 = n3 * mascara[0][2];
+    int n4 = jpegDataBN.data[loc - 1] ; 
+    n4 = n4 * mascara[1][0];
+    int n5 = jpegDataBN.data[loc]; 
+    n5 = n5 * mascara[1][1];
+    int n6 = jpegDataBN.data[loc + 1] ;
+    n6 = n6 * mascara[1][2]; 
+    int n7 = jpegDataBN.data[loc + w -1] ;
+    n7 = n7 * mascara[2][0]; 
+    int n8 = jpegDataBN.data[loc + w] ; 
+    n8 = n8 * mascara[2][1];
+    int n9 = jpegDataBN.data[loc + w +1] ;
+    n9 = n9* mascara[2][2];
+    int resultado = n1 + n2 + n3 + n4 + n5 + n6 +n7 +n8 +n9; 
+    jpegDataFiltrada.data[loc] = resultado;
+ 
 }

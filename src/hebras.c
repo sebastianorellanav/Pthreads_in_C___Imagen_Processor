@@ -15,6 +15,7 @@ extern int cantHebrasConsumidoras;
 extern int ordenHebras;
 extern pthread_barrier_t rendezvous;
 extern sem_t semaforo2;
+extern int ordenHebras2;
 
 
 
@@ -101,21 +102,25 @@ void *pipeline(void *arg)
 
     int filasARecoger = jpegData.height/cantHebrasConsumidoras;  //Se obtiene la cantidad de filas a recoger por cada hebra
     
+    pthread_mutex_lock (&buffer->mutex);
     //Si es la ultima hebra y si m es decimal la ultima hebra debe ejecutar una fila mas
     ordenHebras++;   //Se aumenta el contador para saber cuantas hebras han ejecutado este codigo
     printf("CONSUMIDORA: La hebra nro: %d Entroal pipeline\n", ordenHebras);
     if(ordenHebras == cantHebrasConsumidoras){
         if(jpegData.height%cantHebrasConsumidoras != 0){
-            filasARecoger++;
+            filasARecoger = filasARecoger + (jpegData.height%cantHebrasConsumidoras);
         }
     }
+    pthread_mutex_unlock(&buffer->mutex);
+    //printf("CONSUMIDORA: las filas que tengo que recoger son: %d\n\n\n", filasARecoger);
 
     //*****************************************************************************************************
     //Algoritmo del Conusmidor
     //*****************************************************************************************************
     int *filasHebra = (int *)malloc(sizeof(int)*filasARecoger);
     int largoFilasHebras = filasARecoger; //largo del arreglo filasHebra
-    while( filasARecoger > 0) {
+    for (int i = 0; i < filasARecoger; i++)
+    {
         printf("CONSUMIDORA X: entra al while de filasARecoger\n");
         pthread_mutex_lock (&buffer->mutex);
         if(buffer->empty){
@@ -123,24 +128,32 @@ void *pipeline(void *arg)
             buffer->produciendo = 1;
         }
         while (buffer->empty || buffer->produciendo) {
+            ordenHebras2--;
+            if(ordenHebras2 == 0) //es la ultima hebra
+            {
+                pthread_cond_signal(&buffer->notFull);
+            }
             printf("CONSUMIDORA X: deberia entrar al buffer->empty\n");
             pthread_cond_wait (&buffer->notEmpty, &buffer->mutex);
-        }
+            ordenHebras2++;
+        }       
         numFila = take_from_buffer(&buffer);
+        printf("Obtengo el: %d\n\n\n\n",numFila);
         filasHebra[i] = numFila;
-        pthread_cond_signal(&buffer->notFull);
         pthread_mutex_unlock(&buffer->mutex);
-        filasARecoger--;
         printf("CONSUMIDORA X: Se esta consumiendo del buffer\n");
 
     }
+    ordenHebras2--;
     //*****************************************************************************************************
     //*****************************************************************************************************
     printf("CONSUMIDORA X: ya termine de consumir me voy chao\n");
 
     //barrier para que todas las hebras esperen a que las demas terminen de consumir
+    ordenHebras = 0;   //Para saber cual es la ultima hebra que ejecuta ciertos codigos
     pthread_barrier_wait(&rendezvous);
-    ordenHebras = 0; //Para saber cual es la ultima hebra que ejecuta ciertos codigos
+    pthread_cond_signal(&buffer->notFull);
+    
     printf("Aqui ya pasan el primer barrier\n");
     //conversion
     convertirAEscalaGrises(filasHebra, largoFilasHebras);

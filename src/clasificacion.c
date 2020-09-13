@@ -1,5 +1,6 @@
 //Directivas de Preprocesamiento
 #include "../incl/clasificacion.h"
+#include <stdio.h>
 
 extern JpegData jpegDataFiltrada;
 extern int cantidadCeros;
@@ -22,9 +23,9 @@ void analisisDePropiedad(int *filasACambiar, int largoArreglo){
     ancho = jpegDataFiltrada.width;
     alto = jpegDataFiltrada.height; 
     ordenHebras++;
-
     for (int i = 0; i < largoArreglo; i++)
     {
+        numFila = filasACambiar[i];
         posicion = numFila * ancho;
         for (int j = posicion; j < posicion+ancho; j++)
         {
@@ -35,7 +36,6 @@ void analisisDePropiedad(int *filasACambiar, int largoArreglo){
             }
         }   
     }
-
     if(ordenHebras == cantHebrasConsumidoras) //es la ultima hebra
     {
         //clasifica la imagen

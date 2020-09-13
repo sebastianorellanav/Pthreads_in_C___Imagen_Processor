@@ -7,4 +7,5 @@
 int **leerMascara(char *nombreMascara);
 int **crearPunteroMascara();
 void AplicarFiltro(int *filasHebra, int largoFilasHebras);
+void  calcularFiltro(int loc, int w);
 #endif

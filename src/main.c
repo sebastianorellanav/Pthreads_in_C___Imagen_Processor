@@ -32,6 +32,7 @@ char *nearlyBlack;          //variable que almacena el resultado de la clasifica
 pthread_barrier_t rendezvous;
 sem_t semaforo1;
 sem_t semaforo2;
+int ordenHebras2;
 
 //Funcion Main
 int main (int argc, char **argv)
@@ -111,6 +112,7 @@ int main (int argc, char **argv)
 		numImagen = i;   //se setea el numero de la imagen actual a procesar (Variable Global)
 		ordenHebras = 0; //variable utilizada para saber cual es la ultima hebra que ejecuta ciertas funciones
 		cantidadCeros = 0; //Setear variable en 0
+		ordenHebras2 = cantHebrasConsumidoras;
 		//Comienza la ejecucion de la hebra productora
 		pthread_create(&productora, NULL, leerImagenes, (void *)buffer);
 		printf("se comenzo a ejecutar la productora\n");
@@ -144,6 +146,7 @@ int main (int argc, char **argv)
 		liberarJpeg(&jpegDataBN);
 		liberarJpeg(&jpegDataFiltrada);
 		free(buffer);
+		free(mascara);
 
 		if(flagResultados){
 			//Obtener el nombre de imagen
