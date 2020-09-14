@@ -13,8 +13,7 @@ extern JpegData jpegDataFiltrada;
 extern int numImagen;
 extern int cantHebrasConsumidoras;
 extern int ordenHebras;
-extern sem_t semaforo1;
-extern sem_t semaforo2;
+extern sem_t semaforo;
 
 
 //Entradas:     - Una imagen del tipo JpegData.
@@ -83,9 +82,8 @@ int leerJpeg(JpegData *jpegData,
     jpegData->ch     = cinfo.num_components;
 
     alloc_jpeg(jpegData);
-
-    //Se desbloquea la hebra main
-    sem_post(&semaforo1);
+    printf("Desde este print en adelante ya pueden aparecer CONSUMMIDORAS\n");
+    sem_post(&semaforo);
     // 5. Lectura linea a linea.
     //*****************************************************************************************************
     //Algoritmo del Productor
@@ -108,8 +106,14 @@ int leerJpeg(JpegData *jpegData,
             buffer->consumiendo = 1;
         }
         while (buffer->full || buffer->consumiendo) {
+            printf("full: %d ------ consumiendo: %d\n",buffer->full, buffer->consumiendo);
+            printf("PRODUCTORA: desbloqueo a todas las hebras consumidoras\n");
             pthread_cond_broadcast(&buffer->notEmpty);
+            printf("PRODUCTORA: ahora me bloqueo\n");
             pthread_cond_wait (&buffer->notFull, &buffer->mutex);
+            buffer->consumiendo = 0;
+            buffer->produciendo = 1;
+            printf("PRODUCTORA: me acaban de desbloquear\n");
         }
         put_in_buffer(&buffer, numFila);
         pthread_mutex_unlock(&buffer->mutex);

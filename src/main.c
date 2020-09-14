@@ -8,6 +8,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <pthread.h>
+#include <semaphore.h>
 #include "../incl/lecturaImagenes.h"
 #include "../incl/escrituraImagenes.h"
 #include "../incl/binarizacion.h"
@@ -15,7 +16,6 @@
 #include "../incl/conversion.h"
 #include "../incl/filtro.h"
 #include "../incl/hebras.h"
-#include <semaphore.h>
 
 //Variables Globales
 JpegData jpegData;          //Imagen Original
@@ -30,9 +30,8 @@ int **mascara;              //Mascara para filtro laplaciano
 int cantidadCeros;          //VARIABLE GLOBAL PARA LA CLASIFICACION
 char *nearlyBlack;          //variable que almacena el resultado de la clasificacion
 pthread_barrier_t rendezvous;
-sem_t semaforo1;
-sem_t semaforo2;
 int ordenHebras2;
+sem_t semaforo;
 
 //Funcion Main
 int main (int argc, char **argv)
@@ -93,8 +92,6 @@ int main (int argc, char **argv)
 
 	//Obtener mascara para hacer el filtrado
 	mascara = leerMascara(nombreArchivoMasc);
-	sem_init(&semaforo1, 0, 0);
-	sem_init(&semaforo2, 0, 0);
 	
     // Para cada imagen:
 	for (int i = 1; i <= cantImagenes; i++)
@@ -102,7 +99,8 @@ int main (int argc, char **argv)
 		pthread_t productora;                             //se crean los id de las hebras
     	pthread_t consumidoras[cantHebrasConsumidoras];
 		buffer_t *buffer;                                 //Se crea el buffer
-		buffer_init(&buffer, tamanoBuffer);               //Se inicializa el buffer
+		buffer_init(&buffer, tamanoBuffer);  
+		sem_init(&semaforo,0,0);             //Se inicializa el buffer
 		pthread_mutex_init(&buffer->mutex, NULL);         //Se inicializa el mutex
 		pthread_cond_init(&buffer->notFull, NULL);    
 		pthread_cond_init(&buffer->notEmpty, NULL);
@@ -116,8 +114,7 @@ int main (int argc, char **argv)
 		//Comienza la ejecucion de la hebra productora
 		pthread_create(&productora, NULL, leerImagenes, (void *)buffer);
 		printf("se comenzo a ejecutar la productora\n");
-		//Semaforo que bloquea el main
-		sem_wait(&semaforo1);
+		sem_wait(&semaforo);
 		//Consumir Imagen
 		for(int i = 0 ; i<cantHebrasConsumidoras; i++)
 		{
@@ -146,7 +143,7 @@ int main (int argc, char **argv)
 		liberarJpeg(&jpegDataBN);
 		liberarJpeg(&jpegDataFiltrada);
 		free(buffer);
-		free(mascara);
+		
 
 		if(flagResultados){
 			//Obtener el nombre de imagen
@@ -160,5 +157,6 @@ int main (int argc, char **argv)
 			}
 		}
 	} 
+	free(mascara);
 	return 0;
 }

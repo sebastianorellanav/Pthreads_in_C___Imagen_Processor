@@ -60,6 +60,9 @@ void put_in_buffer(buffer_t **buffer, int numFila)
         (*buffer)->empty = 0; //vacio = false
         printf("PRODUCTORA: se llena el buffer\n");
     }
+    else{
+        (*buffer)->full = 0;
+    }
     
 }
 
@@ -88,6 +91,9 @@ int take_from_buffer(buffer_t **buffer)
     if(lleno == 0){ //Si el buffer esta vacio
         (*buffer)->empty = 1; //vacio = true
         (*buffer)->full = 0;  //lleno = falso
+    }
+    else{
+        (*buffer)->empty = 0;
     }
     printf("CONSUMIDORA: sale de take_from_buffer y el retorno es %d\n",retorno);
     return retorno;
@@ -127,28 +133,35 @@ void *pipeline(void *arg)
             buffer->consumiendo = 0;
             buffer->produciendo = 1;
         }
-        while (buffer->empty || buffer->produciendo) {
+        while(buffer->empty || buffer->produciendo) {
+            printf("empty: %d ------ produciendo: %d\n",buffer->empty, buffer->produciendo);
+            printf("ordenHebras2 ante de restar: %d\n",ordenHebras2);
             ordenHebras2--;
+            printf("ordenHebras2 dsps de restar: %d\n",ordenHebras2);
             if(ordenHebras2 == 0) //es la ultima hebra
             {
+                printf("CONSUMIDORA: soy la ultima y le mando la señal a la productora para que de desbloquee y produzca\n");
                 pthread_cond_signal(&buffer->notFull);
             }
-            printf("CONSUMIDORA X: deberia entrar al buffer->empty\n");
+            printf("CONSUMIDORA X: Me bloqueo\n");
             pthread_cond_wait (&buffer->notEmpty, &buffer->mutex);
+            printf("CONSUMIDORA X: me acaban de desbloquear\n");
             ordenHebras2++;
+            printf("ordenHebras2 dsps de desbloquear: %d\n",ordenHebras2);
         }       
         numFila = take_from_buffer(&buffer);
         printf("Obtengo el: %d\n\n\n\n",numFila);
         filasHebra[i] = numFila;
+        if(i == (filasARecoger-1))
+            ordenHebras2--;
         pthread_mutex_unlock(&buffer->mutex);
         printf("CONSUMIDORA X: Se esta consumiendo del buffer\n");
 
     }
-    ordenHebras2--;
     //*****************************************************************************************************
     //*****************************************************************************************************
     printf("CONSUMIDORA X: ya termine de consumir me voy chao\n");
-
+    pthread_barrier_wait(&rendezvous);
     //barrier para que todas las hebras esperen a que las demas terminen de consumir
     ordenHebras = 0;   //Para saber cual es la ultima hebra que ejecuta ciertos codigos
     pthread_barrier_wait(&rendezvous);
