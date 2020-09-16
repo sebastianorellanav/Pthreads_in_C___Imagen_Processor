@@ -49,7 +49,7 @@ int **crearPunteroMascara(){
 
 void AplicarFiltro(int *filasHebra, int largoFilasHebras)
 {
-    int posicion, nuevoPixel, numFila, p;
+    int posicion, nuevoPixel, numFila;
     int ancho = jpegDataBN.width;
     int alto = jpegDataBN.height;
     int largoImagen = ancho * alto;
@@ -58,7 +58,6 @@ void AplicarFiltro(int *filasHebra, int largoFilasHebras)
     {
         numFila = filasHebra[j];
         posicion = numFila * ancho;
-        p=0;
         for (int i = posicion+1; i < (posicion+ancho-1); i++)  //Calcula la convolucion
         {
             calcularFiltro(i, ancho);   

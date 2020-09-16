@@ -21,11 +21,13 @@ void convertirAEscalaGrises(int *filasACambiar, int largoArreglo){
     int posicion, fila, R, G, B, p;
     uint8_t Y;
 
+    /*
     printf("Tengo las filas:\n");
     for (int i = 0; i < largoArreglo; i++)
     {
         printf("%d  ",filasACambiar[i]);
     }
+    */
     
 
     for (int i = 0; i < largoArreglo; i++)

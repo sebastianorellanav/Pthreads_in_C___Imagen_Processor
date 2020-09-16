@@ -83,6 +83,9 @@ int leerJpeg(JpegData *jpegData,
 
     alloc_jpeg(jpegData);
     printf("Desde este print en adelante ya pueden aparecer CONSUMMIDORAS\n");
+    if(cantHebrasConsumidoras > jpegData->height){
+        cantHebrasConsumidoras = (int)jpegData->height;
+    }
     sem_post(&semaforo);
     // 5. Lectura linea a linea.
     //*****************************************************************************************************

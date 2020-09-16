@@ -97,25 +97,28 @@ int main (int argc, char **argv)
 	for (int i = 1; i <= cantImagenes; i++)
 	{
 		pthread_t productora;                             //se crean los id de las hebras
-    	pthread_t consumidoras[cantHebrasConsumidoras];
+    	
 		buffer_t *buffer;                                 //Se crea el buffer
 		buffer_init(&buffer, tamanoBuffer);  
 		sem_init(&semaforo,0,0);             //Se inicializa el buffer
 		pthread_mutex_init(&buffer->mutex, NULL);         //Se inicializa el mutex
 		pthread_cond_init(&buffer->notFull, NULL);    
 		pthread_cond_init(&buffer->notEmpty, NULL);
-    	pthread_barrier_init(&rendezvous, NULL,cantHebrasConsumidoras);  //Se inicializa la barrera
+    	  //Se inicializa la barrera
 		printf("Se creo el id de las hebras y se inicializo el buffer\n");
 
 		numImagen = i;   //se setea el numero de la imagen actual a procesar (Variable Global)
 		ordenHebras = 0; //variable utilizada para saber cual es la ultima hebra que ejecuta ciertas funciones
 		cantidadCeros = 0; //Setear variable en 0
-		ordenHebras2 = cantHebrasConsumidoras;
+		
 		//Comienza la ejecucion de la hebra productora
 		pthread_create(&productora, NULL, leerImagenes, (void *)buffer);
 		printf("se comenzo a ejecutar la productora\n");
 		sem_wait(&semaforo);
 		//Consumir Imagen
+		pthread_t consumidoras[cantHebrasConsumidoras];
+		pthread_barrier_init(&rendezvous, NULL,cantHebrasConsumidoras);
+		ordenHebras2 = cantHebrasConsumidoras;
 		for(int i = 0 ; i<cantHebrasConsumidoras; i++)
 		{
 			//Comienza la ejecucion de las hebras productoras

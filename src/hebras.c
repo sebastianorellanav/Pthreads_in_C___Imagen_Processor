@@ -101,6 +101,7 @@ int take_from_buffer(buffer_t **buffer)
 
 void *pipeline(void *arg)
 {
+    pthread_barrier_wait(&rendezvous);
     printf("CONSUMIDORA X: entra una hebra X a consumir\n");
     int numFila, i=0;
     buffer_t *buffer;
@@ -162,6 +163,7 @@ void *pipeline(void *arg)
     //*****************************************************************************************************
     printf("CONSUMIDORA X: ya termine de consumir me voy chao\n");
     pthread_barrier_wait(&rendezvous);
+    pthread_cond_signal(&buffer->notFull);
     //barrier para que todas las hebras esperen a que las demas terminen de consumir
     ordenHebras = 0;   //Para saber cual es la ultima hebra que ejecuta ciertos codigos
     pthread_barrier_wait(&rendezvous);
