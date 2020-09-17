@@ -51,27 +51,52 @@ int main (int argc, char **argv)
 	//Variables getopt
 	opterr = 0;
 
+	if(argc == 1){
+		printf("No se ha ingresado ningun parametro.\n");
+		exit(-1);
+	}
+
 	//el siguiente ciclo se utiliza para recibir los parametros de entrada usando getopt
 	while ((c = getopt (argc, argv, "c:u:m:n:b:h:f")) != -1)
 		switch (c)
 			{
 			case 'c':
 				sscanf(optarg, "%d", &cantImagenes);
+				if(cantImagenes <= 0){
+					printf("La cantidad de imagenes ingresada no es valida\n");
+					exit(-1);
+				}
 				break;
 			case 'u':
 				sscanf(optarg, "%d", &umbralBin);
+				if(umbralBin < 0){
+					printf("El umbral de binarizacion ingresado no es valido\n");
+					exit(-1);
+				}
 				break;
 			case 'n':
 				sscanf(optarg, "%d", &umbralNeg);
+				if(umbralBin < 0){
+					printf("El umbral de negrura ingresado no es valido\n");
+					exit(-1);
+				}
 				break;
 			case 'm':
 				nombreArchivoMasc = optarg;
 				break;
 			case 'b':
 				sscanf(optarg, "%d", &tamanoBuffer);
+				if(umbralBin < 0){
+					printf("El tamaño de buffer ingresado no es valido\n");
+					exit(-1);
+				}
 				break;
 			case 'h':
 				sscanf(optarg, "%d", &cantHebrasConsumidoras);
+				if(umbralBin < 0){
+					printf("La cantidad de hebras ingresada no es valida\n");
+					exit(-1);
+				}
 				break;
 			case 'f':
 				flagResultados = 1;
