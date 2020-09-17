@@ -76,7 +76,7 @@ int main (int argc, char **argv)
 				break;
 			case 'n':
 				sscanf(optarg, "%d", &umbralNeg);
-				if(umbralBin < 0){
+				if(umbralNeg < 0){
 					printf("El umbral de negrura ingresado no es valido\n");
 					exit(-1);
 				}
@@ -86,14 +86,14 @@ int main (int argc, char **argv)
 				break;
 			case 'b':
 				sscanf(optarg, "%d", &tamanoBuffer);
-				if(umbralBin < 0){
+				if(tamanoBuffer < 0){
 					printf("El tamaño de buffer ingresado no es valido\n");
 					exit(-1);
 				}
 				break;
 			case 'h':
 				sscanf(optarg, "%d", &cantHebrasConsumidoras);
-				if(umbralBin < 0){
+				if(cantHebrasConsumidoras < 0){
 					printf("La cantidad de hebras ingresada no es valida\n");
 					exit(-1);
 				}
