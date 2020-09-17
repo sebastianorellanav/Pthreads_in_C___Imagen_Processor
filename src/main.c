@@ -34,7 +34,8 @@ int cantidadCeros;          //VARIABLE GLOBAL PARA LA CLASIFICACION
 char *nearlyBlack;          //variable que almacena el resultado de la clasificacion
 pthread_barrier_t rendezvous; //barrera para sincronizar hebras
 int ordenHebras2;           //para saber cual es la ultima hebra que ejecuta ciertas funciones
-sem_t semaforo;             //Semaforo para sincronizar hebras
+sem_t semaforo;
+char *aux;             //Semaforo para sincronizar hebras
 
 
 //**************************************************************************************************************

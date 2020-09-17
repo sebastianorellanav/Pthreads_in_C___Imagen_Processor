@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <jpeglib.h>
 #include <stdint.h>
+#include <unistd.h>
 #include "../incl/conversion.h"
 #include "../incl/lecturaImagenes.h"
 
@@ -17,7 +18,7 @@ void convertirAEscalaGrises(int *filasACambiar, int largoArreglo){
     int ch = jpegData.ch;
     int posicion, fila, R, G, B, p;
     uint8_t Y;    
-
+    sleep(1); //Sincronizacion de hebras
     //Para cada fila que haya consumido la hebra
     for (int i = 0; i < largoArreglo; i++)
     {
