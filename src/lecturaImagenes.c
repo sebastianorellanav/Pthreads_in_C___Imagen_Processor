@@ -49,6 +49,7 @@ void liberarJpeg(JpegData *jpegData){
 //Entradas:     - Imagen del tipo JpegData llamada jpegData
 //              - Nombre de archivo de entrada del tipo char llamado nombreArchivo
 //              - Puntero a estructura de libreria jpeglib llamado jerr
+//              - Puntero a void que contiene el buffer
 //Funcionamiento: Se lee una imagen del tipo JPEG, para lo cual se 
 //                descomprime la imagen.
 //Salidas:      - Entero que indica la correcta lectura del archivo (valor 1).
@@ -57,7 +58,6 @@ int leerJpeg(JpegData *jpegData,
               const char *nombreArchivo,
               struct jpeg_error_mgr *jerr, void *arg)
 {
-    printf("entra a int leerJpeg()\n");
     // 1. Creación del objeto de descompresión JPEG
     struct jpeg_decompress_struct cinfo;
     jpeg_create_decompress(&cinfo);
@@ -81,50 +81,48 @@ int leerJpeg(JpegData *jpegData,
     jpegData->height = cinfo.image_height;
     jpegData->ch     = cinfo.num_components;
 
-    alloc_jpeg(jpegData);
-    printf("Desde este print en adelante ya pueden aparecer CONSUMMIDORAS\n");
+    alloc_jpeg(jpegData);                                //Reservar memoria para la imagen
     if(cantHebrasConsumidoras > jpegData->height){
         cantHebrasConsumidoras = (int)jpegData->height;
     }
-    sem_post(&semaforo);
+    sem_post(&semaforo);       //Se desbloquea la hebra main
+
     // 5. Lectura linea a linea.
     //*****************************************************************************************************
     //Algoritmo del Productor
     //*****************************************************************************************************
     uint8_t *row = jpegData->data;   //Representa una fila de la imagen
     const uint32_t stride = jpegData->width * jpegData->ch;    //el ancho de la imagen
-    buffer_t *buffer;                        
+    buffer_t *buffer;               //Se crea una variable del tipo buffer_t               
     buffer = (buffer_t *) arg;      //Se castea el buffer a buffer_t
     buffer->empty = 0;              //El buffer esta vacio
-    int numFila = 0;
-    printf("PRODUCTORA: va a comenzar la produccion\n");
+    int numFila = 0;                //La variable numFila se utiliza para guardar el numero de fila leida
+
+    //Para cada fila que haya que leer de la imagen
     for (int y = 0; y < jpegData->height; y++) {
-        printf("se esta produciendo la fila: %d\n",y);
-        jpeg_read_scanlines(&cinfo, &row, 1);
-        numFila = y;
-        row += stride;
-        pthread_mutex_lock (&buffer->mutex);
-        if(buffer->full){
-            buffer->produciendo = 0;
-            buffer->consumiendo = 1;
+        jpeg_read_scanlines(&cinfo, &row, 1);  //Se lee la fila
+        numFila = y;                           //Se guarda el numero de fila
+        row += stride;                         //Se avanza el puntero a la siguiente fila
+        pthread_mutex_lock (&buffer->mutex);   //Se bloquea el acceso al bloque de codigo (Exclusion Mutua)
+        if(buffer->full){             //Si el buffer esta lleno
+            buffer->produciendo = 0;  //Se deja de producir
+            buffer->consumiendo = 1;  //Se comienza a consumir
         }
-        while (buffer->full || buffer->consumiendo) {
-            printf("full: %d ------ consumiendo: %d\n",buffer->full, buffer->consumiendo);
-            printf("PRODUCTORA: desbloqueo a todas las hebras consumidoras\n");
-            pthread_cond_broadcast(&buffer->notEmpty);
-            printf("PRODUCTORA: ahora me bloqueo\n");
-            pthread_cond_wait (&buffer->notFull, &buffer->mutex);
+        while (buffer->full || buffer->consumiendo) {             //Si el buffer esta lleno o se esta consumiendo
+            pthread_cond_broadcast(&buffer->notEmpty);            //Desbloquear todas las hebras consumidoras
+            pthread_cond_wait (&buffer->notFull, &buffer->mutex); //Bloquear la hebra Productora
             buffer->consumiendo = 0;
             buffer->produciendo = 1;
-            printf("PRODUCTORA: me acaban de desbloquear\n");
         }
-        put_in_buffer(&buffer, numFila);
-        pthread_mutex_unlock(&buffer->mutex);
-        printf("PRODUCTORA: estamos en el for de leer la imagen en el ciclo: %d\n", y);
+        //Cuando la productora se desblquee o siga produciendo
+        put_in_buffer(&buffer, numFila);      //Colocar la fila en el buffer
+        pthread_mutex_unlock(&buffer->mutex); //Desbloquear el acceso a la seccion de codigo critico
     }
-    buffer->produciendo = 0;
-    buffer->consumiendo = 1;
-    pthread_cond_broadcast(&buffer->notEmpty);
+
+    //Cuando se termine de producir la foto
+    buffer->produciendo = 0;                    //Se deja de producir
+    buffer->consumiendo = 1;                    //Se comienza a consumir
+    pthread_cond_broadcast(&buffer->notEmpty);  //Desbloquear todas las hebras consumidoras
     
     //*****************************************************************************************************
     //*****************************************************************************************************
@@ -139,11 +137,10 @@ int leerJpeg(JpegData *jpegData,
 }
 
 
-//Entradas:     - Nombre de archivo de entrada del tipo char llamado nombreEntrada
+//Entradas:       Puntero a void que contiene el buffer
 //Funcionamiento: Se lee una imagen del tipo JPEG. Esta función es llamada  por el main.
-//Salidas:       - Un JpegData que representa a la imagen de salida.
+//Salidas:        Void
 void *leerImagenes(void *buffer){
-    printf("PRODUCTORA: entra a void *LeerImagenes()\n");
     struct jpeg_error_mgr jerr;
     char filename[30];
     sprintf(filename,"./imagen_%i.jpg", numImagen);     //numImagen variable global
@@ -152,6 +149,7 @@ void *leerImagenes(void *buffer){
         liberarJpeg(&jpegData);
         exit(-1);
     }
+
     //Reservar memoria para la imagen en blanco y negro que se utilizara mas adelante
     jpegDataBN.width = jpegData.width;
 	jpegDataBN.height = jpegData.height;

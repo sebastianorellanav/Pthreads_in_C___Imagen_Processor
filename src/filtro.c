@@ -15,7 +15,6 @@ extern int **mascara;
 //Funcionamiento: se encarga de abrir el archivo, leer la mascara contenida en el y almacenar
 //                la mascara en una matriz de enteros.
 //Salidas:      - Matriz de enteros que representa la mascara leída.
-
 int **leerMascara(char *nombreMascara){
     FILE *archivo = fopen(nombreMascara,"r");
     if(archivo == NULL){
@@ -47,6 +46,10 @@ int **crearPunteroMascara(){
     return mascara;
 }
 
+//Entradas:       - Puntero de tipo int, int que representa el largo del arreglo
+//Funcionamiento: - La hebra que ejecute esta funcion realiza el calculo de la convolucion de los pixeles
+//                 en las filas que le corresponde
+//Salidas:        - Void
 void AplicarFiltro(int *filasHebra, int largoFilasHebras)
 {
     int posicion, nuevoPixel, numFila;
@@ -54,48 +57,27 @@ void AplicarFiltro(int *filasHebra, int largoFilasHebras)
     int alto = jpegDataBN.height;
     int largoImagen = ancho * alto;
     
+    //Para cada fila que haya consumido la hebra
     for (int j = 0; j < largoFilasHebras; j++)
     {
         numFila = filasHebra[j];
         posicion = numFila * ancho;
-        for (int i = posicion+1; i < (posicion+ancho-1); i++)  //Calcula la convolucion
+        //Para cada posicion de la fila
+        for (int i = posicion+1; i < (posicion+ancho-1); i++) 
         {
-            calcularFiltro(i, ancho);   
-            /*
-            nuevoPixel = 0;
-            if(p=posicion-ancho-1 >= 0 && i-1 >= 0 && numFila-1 >= 0) //posicion superior izquierda
-                nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][0]));
-            
-            if(p=posicion-ancho >= 0 && numFila-1 >= 0)  //posicion superior central
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][1])); 
-            
-            if(p=posicion-ancho+1 >= 0 && i+1 < ancho && numFila-1 >= 0)  //posicion superior derecha
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[0][2]));
-
-            if(p=posicion-1 >= 0 && i-1 >= 0)  //posicion izquierda
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[1][0]));
-            
-            if(p=posicion+1 < largoImagen && i+1 < ancho)  //posicion derecha
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[1][2]));
-            
-            if(p=posicion+ancho-1 < largoImagen && i-1 >= 0 && numFila+1 < alto)  //posicion inferior izquierda
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][0]));
-
-            if(p=posicion+ancho < largoImagen && numFila+1 < alto)  //posicion inferior central
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][1]));
-
-            if(p=posicion+ancho+1 < largoImagen && i+1 < ancho && numFila+1 < alto)  //posicion inferior derecha
-               nuevoPixel = nuevoPixel + ((jpegDataBN.data[p]*mascara[2][2]));
-            
-            nuevoPixel = nuevoPixel + ((jpegDataBN.data[posicion]*mascara[1][1])); //posicion central
-            */
-            //jpegDataFiltrada.data[posicion] = nuevoPixel;
+            if(numFila == 0 || numFila == (alto-1)){  //Si es el aprimera fila o la ultima
+                i = (posicion+ancho-1);               //Salir del for y no filtrar esa fila
+            }
+            calcularFiltro(i, ancho);    //Calcular convolucion
         }
         
     }
     
 }
 
+//Entradas:       - int que contiene el numero de pixel, int que contiene el ancho de la foto
+//Funcionamiento: - Calcula la convolucion para el pixel ingresado con la mascara leida en el main
+//Salidas:        - Void
 void  calcularFiltro(int loc, int w){
     int n1 = jpegDataBN.data[loc - w -1];
     n1 = n1* mascara[0][0];

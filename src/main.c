@@ -1,3 +1,4 @@
+//**************************************************************************************************************
 //Directivas de Preprocesamiento
 #include <ctype.h>
 #include <stdio.h>
@@ -17,6 +18,8 @@
 #include "../incl/filtro.h"
 #include "../incl/hebras.h"
 
+
+//**************************************************************************************************************
 //Variables Globales
 JpegData jpegData;          //Imagen Original
 JpegData jpegDataBN;        //Imagen en Blanco y Negro
@@ -29,19 +32,21 @@ int umbralNeg;              //Umbral de negrura
 int **mascara;              //Mascara para filtro laplaciano
 int cantidadCeros;          //VARIABLE GLOBAL PARA LA CLASIFICACION
 char *nearlyBlack;          //variable que almacena el resultado de la clasificacion
-pthread_barrier_t rendezvous;
-int ordenHebras2;
-sem_t semaforo;
+pthread_barrier_t rendezvous; //barrera para sincronizar hebras
+int ordenHebras2;           //para saber cual es la ultima hebra que ejecuta ciertas funciones
+sem_t semaforo;             //Semaforo para sincronizar hebras
 
+
+//**************************************************************************************************************
 //Funcion Main
 int main (int argc, char **argv)
 {
 	//Inicialización de Variables
-	int cantImagenes = 0;
-	int flagResultados = 0;
-	char *nombreArchivoMasc = NULL;
-	int tamanoBuffer;
-	int c;
+	int cantImagenes = 0;             //Cantidad de Imagenes
+	int flagResultados = 0;           //Flag para mostrar Resultados
+	char *nombreArchivoMasc = NULL;   //Nombre del archivo que contiene la mascara para filtrar
+	int tamanoBuffer;                 //Tamaño del buffer
+	int c;                            //variable para almacenar parametros de entrada
 
 	//Variables getopt
 	opterr = 0;
@@ -85,7 +90,8 @@ int main (int argc, char **argv)
 				abort ();
 			}
 
-	if(flagResultados){
+	
+	if(flagResultados){ //Si flagResultado == 1 -> se muestran los resultados
 		printf("|          image          |       nearly black       |\n");
 		printf("|-------------------------|--------------------------|\n");
 	}
@@ -93,19 +99,17 @@ int main (int argc, char **argv)
 	//Obtener mascara para hacer el filtrado
 	mascara = leerMascara(nombreArchivoMasc);
 	
-    // Para cada imagen:
+	//*******************************************************************************************************
+    //Ciclo para procesar multiples iagenes
 	for (int i = 1; i <= cantImagenes; i++)
 	{
-		pthread_t productora;                             //se crean los id de las hebras
-    	
+		pthread_t productora;                             //se crea el id de la hebra productora
 		buffer_t *buffer;                                 //Se crea el buffer
-		buffer_init(&buffer, tamanoBuffer);  
-		sem_init(&semaforo,0,0);             //Se inicializa el buffer
+		buffer_init(&buffer, tamanoBuffer);               //Se inicializa el buffer  
+		sem_init(&semaforo,0,0);                          //Se inicializa el semaforo
 		pthread_mutex_init(&buffer->mutex, NULL);         //Se inicializa el mutex
-		pthread_cond_init(&buffer->notFull, NULL);    
-		pthread_cond_init(&buffer->notEmpty, NULL);
-    	  //Se inicializa la barrera
-		printf("Se creo el id de las hebras y se inicializo el buffer\n");
+		pthread_cond_init(&buffer->notFull, NULL);        //Se inicializa el pthread_cond 1
+		pthread_cond_init(&buffer->notEmpty, NULL);       //Se inicializa el pthread_cond 2
 
 		numImagen = i;   //se setea el numero de la imagen actual a procesar (Variable Global)
 		ordenHebras = 0; //variable utilizada para saber cual es la ultima hebra que ejecuta ciertas funciones
@@ -113,28 +117,26 @@ int main (int argc, char **argv)
 		
 		//Comienza la ejecucion de la hebra productora
 		pthread_create(&productora, NULL, leerImagenes, (void *)buffer);
-		printf("se comenzo a ejecutar la productora\n");
-		sem_wait(&semaforo);
+		sem_wait(&semaforo);    //Se bloquea la hebra main
+		
 		//Consumir Imagen
-		pthread_t consumidoras[cantHebrasConsumidoras];
-		pthread_barrier_init(&rendezvous, NULL,cantHebrasConsumidoras);
-		ordenHebras2 = cantHebrasConsumidoras;
+		pthread_t consumidoras[cantHebrasConsumidoras];                  //Se crean los id para las hebras consumidoras
+		pthread_barrier_init(&rendezvous, NULL,cantHebrasConsumidoras);  //Se inicializa el barrier
+		ordenHebras2 = cantHebrasConsumidoras;                           //variable utilizada para saber cual es la ultima hebra que ejecuta ciertas funciones
+		
 		for(int i = 0 ; i<cantHebrasConsumidoras; i++)
 		{
 			//Comienza la ejecucion de las hebras productoras
 			pthread_create(&consumidoras[i], NULL, pipeline, (void *)buffer);
-			printf("se comienza a ejecutar la consumidora nro: %d\n",i+1);
 		}
-		pthread_join(productora, NULL);
+
+		pthread_join(productora, NULL);      //Se espera a que la productora termine de ejecutarse
 		for (int i = 0; i < cantHebrasConsumidoras; i++)
 		{
-			pthread_join(consumidoras[i], NULL);
+			pthread_join(consumidoras[i], NULL); //Se espera a que las consumidoras terminen de ejecutarse
 		}
 		
-		pthread_barrier_destroy(&rendezvous);
-    	printf("se destruye la barrera\n");
-		
-		printf("Si logra llegar hasta aqui estamos salvados\n");
+		pthread_barrier_destroy(&rendezvous);  //Se destruye la barrera
 
 		//6. Escribir imagen
 		char fileout[30];
@@ -147,7 +149,7 @@ int main (int argc, char **argv)
 		liberarJpeg(&jpegDataFiltrada);
 		free(buffer);
 		
-
+		//Se muestran por pantalla los resultados obtenidos
 		if(flagResultados){
 			//Obtener el nombre de imagen
 			char imagename[30];
@@ -160,6 +162,8 @@ int main (int argc, char **argv)
 			}
 		}
 	} 
+
+	//Se libera la memoria de la mascara para el filtro
 	free(mascara);
-	return 0;
+	return 0;  //exit
 }

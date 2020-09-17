@@ -6,23 +6,24 @@
 extern JpegData jpegDataFiltrada;
 extern int umbralBin;
 
-//Entradas:     - JpegData que representa la imagen filtrada (Filtro de realce).
-//              - uint8_t que representa el umbral de binarización de la imagen.       
+//Entradas:     - Puntero de tipo int, int que representa el largo del arreglo      
 //Funcionamiento: se compara el valor de cada pixel de la imagen de entrada con
 //                el umbral ingresado. Si el pixel es mayor al umbral, entonces
 //                cambiará su valor a 255 (blanco) y en caso contrario, el valor 
-//                del pixel  será 0 (negro). 
-//Salidas:      - Una imagen del tipo JpegData binarizada (con píxeles brancos y negros).
-
+//                del pixel  será 0 (negro). Lo anterior se realiza en las filas 
+//                a cada hebra
+//Salidas:      - Void
 void binarizarImagen(int *filasACambiar, int largoArreglo){
 
     int ancho = jpegDataFiltrada.width;
     int posicion, fila;
 
-    for (int i = 0; i < largoArreglo; i++)  //Para cada fila que tenga que modificar la hebra
+    //Para cada fila que tenga que modificar la hebra
+    for (int i = 0; i < largoArreglo; i++)  
     {
         fila = filasACambiar[i];
         posicion = fila*ancho;
+        //Para cada posicion de la fila
         for (int j = posicion; j < posicion+ancho; j++)
         {
             if(jpegDataFiltrada.data[j] > umbralBin){

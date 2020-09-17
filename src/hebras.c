@@ -8,6 +8,8 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+//********************************************************************************************************
+//Variables Globales
 extern JpegData jpegData;
 extern JpegData jpegDataBN;
 extern int numImagen;
@@ -17,60 +19,68 @@ extern pthread_barrier_t rendezvous;
 extern sem_t semaforo2;
 extern int ordenHebras2;
 
-
-
+//ENTRADA:        - Doble puntero de tipo buffer_t, int que contiene el tamaño del buffer
+//FUNCIONAMIENTO: - Reserva memoria para guardar las filas en el buffer e inicializa las variables
+//                  internas del buffer 
+//SALIDA:         - Void
 void buffer_init(buffer_t **buffer, int tamano)
 {
-	*buffer = (buffer_t *)malloc(sizeof(buffer_t));
-	(*buffer)->buf = (int *)malloc(sizeof(int)*tamano);
-	(*buffer)->tamano = tamano;
-	for (int i = 0; i < tamano; i++)
+	*buffer = (buffer_t *)malloc(sizeof(buffer_t));      //Reservar memoria para la estructura
+	(*buffer)->buf = (int *)malloc(sizeof(int)*tamano);  //Reservar memoria para el buffer
+	(*buffer)->tamano = tamano;                          //Setear tamaño del buffer
+	
+    for (int i = 0; i < tamano; i++)  //Para cada elemento del buffer   
 	{
-		(*buffer)->buf[i] = -1;
+		(*buffer)->buf[i] = -1;       //Setearlo en -1 -> Espacio vacio
 	}
+
+    //Setear otras variables del buffer
 	(*buffer)->empty = 1;
     (*buffer)->full = 0;
     (*buffer)->produciendo = 1;
     (*buffer)->consumiendo = 0;
-	
-	//aqui van las otras cosas que no sabemos como inicializarlas
-	//...
+
 }
 
+//ENTRADA:        - Doble puntero de tipo buffer_t, int que contiene el numero de fila
+//FUNCIONAMIENTO: - Coloca una fila en el buffer
+//SALIDA:         - Void
 void put_in_buffer(buffer_t **buffer, int numFila)
 {
-    printf("PRODUCTORA: entra a put_in_buffer y el numFila es %d\n",numFila);
-    int vacios = 0;
+    int vacios = 0;   //Variable que cuenta espacios vacios
     for (int i = 0; i < (*buffer)->tamano; i++)
     {
         if((*buffer)->buf[i] == -1){  //posicion vacia entonces se puede agregar
-            (*buffer)->buf[i] = numFila; //putin buffer
-            i = (*buffer)->tamano;
-            (*buffer)->empty = 0;
+            (*buffer)->buf[i] = numFila; //agregar fila al buffer
+            i = (*buffer)->tamano;       //Salir del ciclo
+            (*buffer)->empty = 0;        //Buffer ya no esta vacio
         }
     }
+
     for (int i = 0; i < (*buffer)->tamano; i++)
     {
         if((*buffer)->buf[i] == -1){  //posicion vacia entonces se puede agregar
-           vacios++;
+           vacios++;                  //Contar posiciones vacias
         }
     }
-    if(vacios == 0){
-        (*buffer)->full = 1; //buffer esta lleno
-        (*buffer)->empty = 0; //vacio = false
-        printf("PRODUCTORA: se llena el buffer\n");
+
+    if(vacios == 0){          //Si no hay posiciones vacias
+        (*buffer)->full = 1;  //buffer lleno = verdadero
+        (*buffer)->empty = 0; //buffer vacio = falso
     }
     else{
-        (*buffer)->full = 0;
+        (*buffer)->full = 0;  //buffer lleno = falso
     }
     
 }
 
+//ENTRADA:        - Doble puntero de tipo buffer_t
+//FUNCIONAMIENTO: - Se obtiene la primera fila que se encuentre disponible en el buffer
+//SALIDA:         - Int que contiene una fila obtenida del buffer
 int take_from_buffer(buffer_t **buffer)
 {
-    printf("CONSUMIDORA: entra a take_from_buffer\n");
-    int retorno = -1;
-    int lleno = 0;
+    int retorno = -1; //retorno en caso de no encontrar ninguna fila
+    int lleno = 0;    //Variable que cuenta posiciones ocupadas
     for (int i = 0; i < (*buffer)->tamano; i++)
     {
         if((*buffer)->buf[i] != -1){       //si hay algo en esa posicion
@@ -93,115 +103,100 @@ int take_from_buffer(buffer_t **buffer)
         (*buffer)->full = 0;  //lleno = falso
     }
     else{
-        (*buffer)->empty = 0;
+        (*buffer)->empty = 0; //vacio = falso
     }
-    printf("CONSUMIDORA: sale de take_from_buffer y el retorno es %d\n",retorno);
     return retorno;
 }
 
+//ENTRADA:        - Puntero de tipo void que contiene el buffer
+//FUNCIONAMIENTO: - Esta es la funcion ejecutada por cada hebra consumidora:
+//                - Se realiza la lectura del buffer por cada una de las hebras consumidoras y
+//                  cada hebra procesa las filas leidas
+//SALIDA:         - Void
 void *pipeline(void *arg)
 {
-    pthread_barrier_wait(&rendezvous);
-    printf("CONSUMIDORA X: entra una hebra X a consumir\n");
-    int numFila, i=0;
-    buffer_t *buffer;
-    buffer = (buffer_t *) arg;   //Se castea el Buffer
+    pthread_barrier_wait(&rendezvous);   //Se espera a que todas la hebras consumidoras esten creadas
+    int numFila, i=0;                    //NumFila se utiliza para guardar la fila obtenida del buffer
+    buffer_t *buffer;                    //Se crea una variable de tipo buffer_t
+    buffer = (buffer_t *) arg;           //Se castea el Buffer
 
     int filasARecoger = jpegData.height/cantHebrasConsumidoras;  //Se obtiene la cantidad de filas a recoger por cada hebra
     
-    pthread_mutex_lock (&buffer->mutex);
-    //Si es la ultima hebra y si m es decimal la ultima hebra debe ejecutar una fila mas
-    ordenHebras++;   //Se aumenta el contador para saber cuantas hebras han ejecutado este codigo
-    printf("CONSUMIDORA: La hebra nro: %d Entroal pipeline\n", ordenHebras);
+    pthread_mutex_lock (&buffer->mutex); //Se entra a la seccion critica y se bloquea el acceso a las demas hebras
+    ordenHebras++;   //Se aumenta el contador para saber cuantas hebras han ejecutado este codigo (Variable Global)
+    //Si es la ultima hebra y si m es decimal la ultima hebra debe ejecutar mas filas
     if(ordenHebras == cantHebrasConsumidoras){
-        if(jpegData.height%cantHebrasConsumidoras != 0){
-            filasARecoger = filasARecoger + (jpegData.height%cantHebrasConsumidoras);
+        if(jpegData.height%cantHebrasConsumidoras != 0){                              //Si m es decimal
+            filasARecoger = filasARecoger + (jpegData.height%cantHebrasConsumidoras); //la ultima hebra debe ejecutar mas filas
         }
     }
-    pthread_mutex_unlock(&buffer->mutex);
-    //printf("CONSUMIDORA: las filas que tengo que recoger son: %d\n\n\n", filasARecoger);
+    pthread_mutex_unlock(&buffer->mutex);  //Se sale de la seccion critica
+
 
     //*****************************************************************************************************
     //Algoritmo del Conusmidor
     //*****************************************************************************************************
-    int *filasHebra = (int *)malloc(sizeof(int)*filasARecoger);
-    int largoFilasHebras = filasARecoger; //largo del arreglo filasHebra
-    for (int i = 0; i < filasARecoger; i++)
+    int *filasHebra = (int *)malloc(sizeof(int)*filasARecoger);  //Arreglo para guardar las filas de cada hebra
+    int largoFilasHebras = filasARecoger;                        //largo del arreglo filasHebra
+    for (int i = 0; i < filasARecoger; i++)                      //Por cada fila a consumir
     {
-        printf("CONSUMIDORA X: entra al while de filasARecoger\n");
-        pthread_mutex_lock (&buffer->mutex);
-        if(buffer->empty){
-            buffer->consumiendo = 0;
-            buffer->produciendo = 1;
+        pthread_mutex_lock (&buffer->mutex);  //Se entra a seccion critica y se bloquea el acceso a las demas hebras
+        if(buffer->empty){                    //Si el buffer esta vacio
+            buffer->consumiendo = 0;          //se deja de consumir
+            buffer->produciendo = 1;          //Se comienza a producir
         }
-        while(buffer->empty || buffer->produciendo) {
-            printf("empty: %d ------ produciendo: %d\n",buffer->empty, buffer->produciendo);
-            printf("ordenHebras2 ante de restar: %d\n",ordenHebras2);
-            ordenHebras2--;
-            printf("ordenHebras2 dsps de restar: %d\n",ordenHebras2);
-            if(ordenHebras2 == 0) //es la ultima hebra
+        while(buffer->empty || buffer->produciendo) {  //Mientras el buffer este vacio o la productora este produciendo
+            ordenHebras2--;                            //Variable Global utilizada para saber cual es la ultima hebra
+            if(ordenHebras2 == 0)                      //es la ultima hebra
             {
-                printf("CONSUMIDORA: soy la ultima y le mando la señal a la productora para que de desbloquee y produzca\n");
-                pthread_cond_signal(&buffer->notFull);
+                pthread_cond_signal(&buffer->notFull); //Se desbloquea la hebra productora
             }
-            printf("CONSUMIDORA X: Me bloqueo\n");
-            pthread_cond_wait (&buffer->notEmpty, &buffer->mutex);
-            printf("CONSUMIDORA X: me acaban de desbloquear\n");
+            pthread_cond_wait (&buffer->notEmpty, &buffer->mutex); //Se bloquea la hebra consumidora
             ordenHebras2++;
-            printf("ordenHebras2 dsps de desbloquear: %d\n",ordenHebras2);
         }       
-        numFila = take_from_buffer(&buffer);
-        printf("Obtengo el: %d\n\n\n\n",numFila);
-        filasHebra[i] = numFila;
-        if(i == (filasARecoger-1))
-            ordenHebras2--;
-        pthread_mutex_unlock(&buffer->mutex);
-        printf("CONSUMIDORA X: Se esta consumiendo del buffer\n");
-
+        numFila = take_from_buffer(&buffer);    //La conusmidora obtiene una fila del buffer
+        filasHebra[i] = numFila;                //Se guarda la fila en el arreglo filasHebras
+        if(i == (filasARecoger-1))              //Si la hebra ya consumio todas las filas que le corresponden
+            ordenHebras2--;                     //Se le resta 1 a la Variable Global
+        pthread_mutex_unlock(&buffer->mutex);   //Se sale de la seccion critica
     }
     //*****************************************************************************************************
     //*****************************************************************************************************
-    printf("CONSUMIDORA X: ya termine de consumir me voy chao\n");
-    pthread_barrier_wait(&rendezvous);
-    pthread_cond_signal(&buffer->notFull);
-    //barrier para que todas las hebras esperen a que las demas terminen de consumir
-    ordenHebras = 0;   //Para saber cual es la ultima hebra que ejecuta ciertos codigos
-    pthread_barrier_wait(&rendezvous);
-    pthread_cond_signal(&buffer->notFull);
+
+    pthread_barrier_wait(&rendezvous);     //que todas las hebras esperen a que las demas terminen de consumir
+    pthread_cond_signal(&buffer->notFull); //Se desbloquea la productora para que termine su ejecucion en caso de que haya sido bloqueada
+    ordenHebras = 0;                       //Para saber cual es la ultima hebra que ejecuta ciertos codigos
     
-    printf("Aqui ya pasan el primer barrier\n");
+    pthread_barrier_wait(&rendezvous);     //Segunda barrera para sincrinozar las hebras
+    pthread_cond_signal(&buffer->notFull); 
+    
+    //******************************************************************************************************
     //conversion
     convertirAEscalaGrises(filasHebra, largoFilasHebras);
-    printf("Ya se convirtio a blanco y negro\n");
     //esperar a todas las hebras
     pthread_barrier_wait(&rendezvous);
-    printf("Aqui ya pasan el segundo barrier\n");
 
+    //******************************************************************************************************
     //filtro
     AplicarFiltro(filasHebra, largoFilasHebras);
-    printf("Aqui ya aplico el filtro\n");
     //esperar a todas las hebras
     pthread_barrier_wait(&rendezvous);
-    printf("Aqui ya pasan el tercer barrier\n");
 
+    //******************************************************************************************************
     //binarizacion
     binarizarImagen(filasHebra, largoFilasHebras);
-    printf("Aqui ya se binarizo la imagen\n");
     //esperar a todas las hebras
     pthread_barrier_wait(&rendezvous);
-    printf("Aqui ya pasan el cuarto barrier\n");
 
+    //******************************************************************************************************
     //clasificacion -> Seccion Critica
-    printf("Aqui estan antes de la seccion critica\n");
     pthread_mutex_lock (&buffer->mutex);
-    printf("CONSUMIDORA X: entra a la seccion critica\n");
     analisisDePropiedad(filasHebra, largoFilasHebras);
-    printf("CONSUMIDORA X: clasifica la imagen\n");
     pthread_mutex_unlock(&buffer->mutex);
-    printf("CONSUMIDORA X: sale de la seccion critica\n");
 
-    free(filasHebra);
-    printf("se libera el malloc y vuelve al main\n");
+
+    free(filasHebra);    //Liberar memoria
+
+    //******************************************************************************************************
     //volver a la hebra main
-
 }
